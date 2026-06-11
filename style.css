@@ -1,0 +1,357 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    min-height: 100vh;
+}
+
+/* ========== THÈME CLAIR (DEFAULT) ========== */
+body.light {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+}
+
+body.light .app-container {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+body.light .score-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+body.light .case {
+    background: linear-gradient(145deg, #f5e6ca, #e8d5b5);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+body.light .turn-indicator {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+/* ========== THÈME SOMBRE ========== */
+body.dark {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #eee;
+}
+
+body.dark .app-container {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+}
+
+body.dark .score-card {
+    background: linear-gradient(135deg, #1e1e2f, #2a2a3e);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    color: #eee;
+}
+
+body.dark .case {
+    background: linear-gradient(145deg, #2d2d44, #1a1a2e);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+    color: #ffd700;
+}
+
+body.dark .case:hover {
+    background: linear-gradient(145deg, #3d3d5c, #2a2a44);
+}
+
+body.dark .turn-indicator {
+    background: linear-gradient(135deg, #ff6b6b, #c92a2a);
+}
+
+body.dark .reset-btn {
+    background: linear-gradient(135deg, #ff6b6b, #c92a2a);
+}
+
+/* ========== CONTENEUR PRINCIPAL ========== */
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    border-radius: 30px;
+    transition: background 0.3s ease;
+}
+
+/* ========== HEADER ========== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding: 20px;
+    border-radius: 20px;
+}
+
+.logo {
+    text-align: center;
+}
+
+.logo i {
+    font-size: 48px;
+    color: #ffd700;
+    margin-bottom: 10px;
+}
+
+.logo h1 {
+    font-size: 2.5rem;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.subtitle {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.theme-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+body.light .theme-btn {
+    background: #333;
+    color: white;
+}
+
+body.dark .theme-btn {
+    background: #ffd700;
+    color: #333;
+}
+
+.theme-btn:hover {
+    transform: scale(1.05);
+}
+
+/* ========== CARTES DE SCORES ========== */
+.score-cards {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+}
+
+.score-card {
+    text-align: center;
+    padding: 25px 40px;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    min-width: 180px;
+}
+
+.score-card:hover {
+    transform: translateY(-5px);
+}
+
+.avatar i {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.score-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.score-value {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 10px 0;
+}
+
+.badge {
+    font-size: 0.7rem;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.1);
+    display: inline-block;
+}
+
+.vs {
+    font-size: 2rem;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ========== PLATEAU ========== */
+.game-board {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+#plateau {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px;
+    border-radius: 60px;
+}
+
+.rangee {
+    display: flex;
+    gap: 12px;
+    margin: 8px 0;
+}
+
+.case {
+    width: 75px;
+    height: 75px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.case:hover {
+    transform: scale(1.08);
+}
+
+.case:active {
+    transform: scale(0.95);
+}
+
+.case.vide {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.case.vide:hover {
+    transform: none;
+}
+
+/* Animation de capture */
+.case.capture-animation {
+    animation: capture 0.5s ease;
+}
+
+@keyframes capture {
+    0% { transform: scale(1); background: #ffd700; }
+    50% { transform: scale(1.3); background: #ff6b6b; }
+    100% { transform: scale(1); background: inherit; }
+}
+
+/* ========== CONTRÔLES ========== */
+.game-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.turn-indicator {
+    padding: 15px 30px;
+    border-radius: 50px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+.reset-btn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.reset-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.info-message {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .case {
+        width: 50px;
+        height: 50px;
+        font-size: 16px;
+    }
+    
+    .rangee {
+        gap: 8px;
+    }
+    
+    .score-card {
+        padding: 15px 25px;
+        min-width: 130px;
+    }
+    
+    .score-value {
+        font-size: 2rem;
+    }
+    
+    .logo h1 {
+        font-size: 1.8rem;
+    }
+    
+    .header {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .case {
+        width: 40px;
+        height: 40px;
+        font-size: 12px;
+    }
+    
+    .rangee {
+        gap: 5px;
+    }
+    
+    .score-cards {
+        gap: 15px;
+    }
+}

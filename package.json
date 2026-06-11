@@ -1,0 +1,15 @@
+cd ~/Documents/songho-distant
+cat > package.json << 'EOF'
+{
+  "name": "songho-multiplayer",
+  "version": "1.0.0",
+  "description": "Jeu Songho multijoueur",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+EOF

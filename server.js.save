@@ -1,0 +1,111 @@
+const express = require('express');
+const app = express();
+app.use(express.json());
+app.use(express.static('.'));
+
+let gameState = {
+    board: [5,5,5,5,5,5,5, 5,5,5,5,5,5,5],
+    scores: {1: 0, 2: 0},
+    currentPlayer: 1,
+    gameOver: false,
+    winner: null
+};
+
+app.get('/api/state', (req, res) => {
+    res.json(gameState);
+});
+
+app.post('/api/reset', (req, res) => {
+    gameState = {
+        board: [5,5,5,5,5,5,5, 5,5,5,5,5,5,5],
+        scores: {1: 0, 2: 0},
+        currentPlayer: 1,
+        gameOver: false,
+        winner: null
+    };
+    res.json({success: true});
+});
+
+app.post('/api/move', (req, res) => {
+    const { caseIndex, player } = req.body;
+    
+    if (gameState.gameOver) {
+        return res.status(400).json({error: "Partie terminée"});
+    }
+    if (player !== gameState.currentPlayer) {
+        return res.status(400).json({error: "Ce n'est pas ton tour"});
+    }
+    if (player === 1 && caseIndex >= 7) {
+        return res.status(400).json({error: "Choisis une case dans ta rangée"});
+    }
+    if (player === 2 && caseIndex < 7) {
+        return res.status(400).json({error: "Choisis une case dans ta rangée"});
+    }
+    if (gameState.board[caseIndex] === 0) {
+        return res.status(400).json({error: "Cette case est vide"});
+    }
+    
+    let graines = gameState.board[caseIndex];
+    gameState.board[caseIndex] = 0;
+    let i = caseIndex;
+    let derniereCase = caseIndex;
+    
+    while (graines > 0) {
+        i = (i + 1) % 14;
+        gameState.board[i]++;
+        graines--;
+        derniereCase = i;
+    }
+    
+    let estCaseAdverse = false;
+    if (player === 1 && derniereCase >= 7) estCaseAdverse = true;
+    if (player === 2 && derniereCase <= 6) estCaseAdverse = true;
+    
+    if (estCaseAdverse && (gameState.board[derniereCase] === 2 || gameState.board[derniereCase] === 3)) {
+        let grainesCapturees = gameState.board[derniereCase];
+        let totalAdverse = 0;
+        if (player === 1) {
+            for (let j = 7; j <= 13; j++) totalAdverse += gameState.board[j];
+        } else {
+            for (let j = 0; j <= 6; j++) totalAdverse += gameState.board[j];
+        }
+        if (totalAdverse - grainesCapturees > 0) {
+            gameState.board[derniereCase] = 0;
+            gameState.scores[player] += grainesCapturees;
+        }
+    }
+    
+    let joueur1PeutJouer = false;
+    for (let j = 0; j <= 6; j++) if (gameState.board[j] > 0) joueur1PeutJouer = true;
+    let joueur2PeutJouer = false;
+    for (let j = 7; j <= 13; j++) if (gameState.board[j] > 0) joueur2PeutJouer = true;
+    
+    if (!joueur1PeutJouer || !joueur2PeutJouer) {
+        gameState.gameOver = true;
+        if (!joueur1PeutJouer) {
+            for (let j = 7; j <= 13; j++) {
+                gameState.scores[2] += gameState.board[j];
+                gameState.board[j] = 0;
+            }
+        }
+        if (!joueur2PeutJouer) {
+            for (let j = 0; j <= 6; j++) {
+                gameState.scores[1] += gameState.board[j];
+                gameState.board[j] = 0;
+            }
+        }
+        if (gameState.scores[1] > gameState.scores[2]) gameState.winner = 1;
+        else if (gameState.scores[2] > gameState.scores[1]) gameState.winner = 2;
+        else gameState.winner = 0;
+    } else {
+        gameState.currentPlayer = (player === 1) ? 2 : 1;
+    }
+    
+    res.json(gameState);
+});
+
+app.listen(3000, () => {
+    console.log('Serveur démarré sur http://localhost:3000');
+});
+
+
