@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Songho - VS Intelligence Artificielle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .ia-badge {
+            background: #4caf50;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            margin-left: 10px;
+        }
+        .difficulty-selector {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .difficulty-btn {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .difficulty-btn.active {
+            background: #ff8c00;
+        }
+    </style>
+</head>
+<body>
+    <!-- ÉCRAN DE CHARGEMENT -->
+    <div id="loaderScreen" class="loader-screen">
+        <div class="loader-content">
+            <i class="fas fa-robot loader-icon"></i>
+            <h2>SONGHO VS IA</h2>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <p id="loadingText" class="loading-text">Initialisation de l'IA...</p>
+        </div>
+    </div>
+
+    <!-- PAGE PRINCIPALE -->
+    <div id="mainContent" style="display: none;">
+        <div class="app-container">
+            <div class="header">
+                <div class="logo">
+                    <i class="fas fa-chess-board"></i>
+                    <h1>SONGHO <span class="ia-badge"><i class="fas fa-microchip"></i> VS IA</span></h1>
+                    <span class="subtitle">Défiez l'intelligence artificielle</span>
+                </div>
+                <button id="themeToggle" class="theme-btn">
+                    <i class="fas fa-moon"></i>
+                    <span>Thème sombre</span>
+                </button>
+            </div>
+
+            <div class="difficulty-selector">
+                <button id="easyBtn" class="difficulty-btn">🤓 Facile</button>
+                <button id="mediumBtn" class="difficulty-btn active">⚡ Moyen</button>
+                <button id="hardBtn" class="difficulty-btn">🧠 Difficile</button>
+            </div>
+
+            <div class="score-cards">
+                <div class="score-card player1-card">
+                    <div class="avatar"><i class="fas fa-user"></i></div>
+                    <h3>TOI (Joueur 1)</h3>
+                    <div class="score-value" id="scoreJ1">0</div>
+                    <div class="badge">⬇️ Bas</div>
+                </div>
+                <div class="vs"><i class="fas fa-gripfire"></i></div>
+                <div class="score-card player2-card">
+                    <div class="avatar"><i class="fas fa-robot"></i></div>
+                    <h3>IA (Joueur 2)</h3>
+                    <div class="score-value" id="scoreJ2">0</div>
+                    <div class="badge">⬆️ Haut</div>
+                </div>
+            </div>
+
+            <div class="game-board">
+                <div id="plateau"></div>
+            </div>
+
+            <div class="game-controls">
+                <div class="turn-indicator" id="messageTour">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span>À ton tour !</span>
+                </div>
+                <button id="resetBtn" class="reset-btn">
+                    <i class="fas fa-sync-alt"></i>
+                    Nouvelle partie
+                </button>
+                <button id="backBtn" class="reset-btn" style="background: #6c757d;">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour au lobby
+                </button>
+            </div>
+
+            <div id="infoMessage" class="info-message"></div>
+        </div>
+    </div>
+
+    <script>
+        // ========== ÉTAT DU JEU ==========
+        let plateau = [];
+        let scoreJ1 = 0, scoreJ2 = 0;
+        let joueurActuel = 1;  // 1 = humain (toi), 2 = IA
+        let partieFinie = false;
+        let iaEnTrainDeJouer = false;
+        let niveauDifficulte = "moyen";  // facile, moyen, difficile
+
+        // ========== BARRE DE CHARGEMENT ==========
+        let progress = 0;
+        const steps = [
+            { text: "Chargement de l'IA...", width: 25 },
+            { text: "Initialisation du plateau...", width: 50 },
+            { text: "Analyse des stratégies...", width: 75 },
+            { text: "Prêt à jouer !", width: 100 }
+        ];
+        
+        function updateProgress(stepIndex) {
+            if (stepIndex >= steps.length) {
+                setTimeout(() => {
+                    document.getElementById('loaderScreen').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loaderScreen').style.display = 'none';
+                        document.getElementById('mainContent').style.display = 'block';
+                    }, 500);
+                }, 500);
+                return;
+            }
+            const step = steps[stepIndex];
+            const pf = document.getElementById('progressFill');
+            const lt = document.getElementById('loadingText');
+            if (pf) pf.style.width = step.width + '%';
+            if (lt) lt.textContent = step.text;
+            setTimeout(() => updateProgress(stepIndex + 1), 600);
+        }
+        updateProgress(0);
+
+        // ========== THÈME ==========
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.classList.add(savedTheme);
+            updateThemeButton(savedTheme);
+        }
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark');
+            const newTheme = isDark ? 'light' : 'dark';
+            document.body.classList.remove('light', 'dark');
+            document.body.classList.add(newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+        }
+        function updateThemeButton(theme) {
+            const btn = document.getElementById('themeToggle');
+            if (btn) {
+                const isDark = theme === 'dark';
+                btn.innerHTML = isDark ? '<i class="fas fa-sun"></i><span>Thème clair</span>' : '<i class="fas fa-moon"></i><span>Thème sombre</span>';
+            }
+        }
+
+        // ========== INITIALISATION ==========
+        function initJeu() {
+            plateau = [5,5,5,5,5,5,5,5,5,5,5,5,5,5];
+            scoreJ1 = 0;
+            scoreJ2 = 0;
+            joueurActuel = 1;
+            partieFinie = false;
+            iaEnTrainDeJouer = false;
+            afficherPlateau();
+            miseAJourAffichage();
+        }
+
+        function afficherPlateau() {
+            const container = document.getElementById('plateau');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            const rangeeHaut = document.createElement('div');
+            rangeeHaut.className = 'rangee';
+            for (let i = 13; i >= 7; i--) {
+                rangeeHaut.appendChild(creerCase(i, false));
+            }
+            container.appendChild(rangeeHaut);
+            
+            const rangeeBas = document.createElement('div');
+            rangeeBas.className = 'rangee';
+            for (let i = 0; i <= 6; i++) {
+                rangeeBas.appendChild(creerCase(i, true));
+            }
+            container.appendChild(rangeeBas);
+        }
+
+        function creerCase(index, estCaseHumain) {
+            const caseDiv = document.createElement('div');
+            caseDiv.className = 'case';
+            if (plateau[index] === 0) caseDiv.classList.add('vide');
+            caseDiv.textContent = plateau[index];
+            
+            const peutJouer = !partieFinie && !iaEnTrainDeJouer && joueurActuel === 1 && estCaseHumain && plateau[index] > 0;
+            if (peutJouer) {
+                caseDiv.style.cursor = 'pointer';
+                caseDiv.onclick = () => jouerCoupHumain(index);
+            }
+            return caseDiv;
+        }
+
+        // ========== IA ==========
+        function jouerCoupIA() {
+            if (partieFinie || joueurActuel !== 2 || iaEnTrainDeJouer) return;
+            
+            iaEnTrainDeJouer = true;
+            miseAJourAffichage();
+            
+            setTimeout(() => {
+                let meilleurCoup = choisirMeilleurCoupIA();
+                if (meilleurCoup !== null) {
+                    jouerCoup(meilleurCoup, true);
+                }
+                iaEnTrainDeJouer = false;
+                if (!partieFinie && joueurActuel === 2) {
+                    joueurActuel = 1;
+                    miseAJourAffichage();
+                }
+                afficherPlateau();
+            }, 300);
+        }
+
+        function choisirMeilleurCoupIA() {
+    const casesIA = [7,8,9,10,11,12,13];
+    let casesDisponibles = casesIA.filter(i => plateau[i] > 0);
+    
+    if (casesDisponibles.length === 0) return null;
+    
+    if (niveauDifficulte === "facile") {
+        // IA facile : coup aléatoire
+        return casesDisponibles[Math.floor(Math.random() * casesDisponibles.length)];
+    }
+    
+    if (niveauDifficulte === "difficile") {
+        // IA difficile : anticipation sur 2 coups
+        let meilleurScore = -Infinity;
+        let meilleurCoup = casesDisponibles[0];
+        
+        for (let coup of casesDisponibles) {
+            // Simuler le coup de l'IA
+            let plateauSimu = [...plateau];
+            let resultat = simulerCoupComplet(plateauSimu, coup, 2);
+            
+            // Si après son coup, l'adversaire peut jouer, on simule son meilleur coup
+            if (!resultat.partieFinie && resultat.joueurSuivant === 1) {
+                let casesAdverses = [0,1,2,3,4,5,6].filter(i => plateauSimu[i] > 0);
+                let pireScoreAdverse = Infinity;
+                for (let coupAdv of casesAdverses) {
+                    let simuAdv = simulerCoupComplet([...plateauSimu], coupAdv, 1);
+                    pireScoreAdverse = Math.min(pireScoreAdverse, simuAdv.capture);
+                }
+                resultat.capture -= pireScoreAdverse * 0.5;
+            }
+            
+            if (resultat.capture > meilleurScore) {
+                meilleurScore = resultat.capture;
+                meilleurCoup = coup;
+            }
+        }
+        return meilleurCoup;
+    }
+    
+    // IA moyenne : choisir le coup avec le plus de captures immédiates
+    let meilleurScore = -1;
+    let meilleurCoup = casesDisponibles[0];
+    
+    for (let caseIndex of casesDisponibles) {
+        let simulation = simulerCoupComplet([...plateau], caseIndex, 2);
+        if (simulation.capture > meilleurScore) {
+            meilleurScore = simulation.capture;
+            meilleurCoup = caseIndex;
+        }
+    }
+    
+    return meilleurCoup;
+}
+
+function simulerCoupComplet(plateauSimu, index, joueur) {
+    let graines = plateauSimu[index];
+    plateauSimu[index] = 0;
+    let i = index;
+    let derniereCase = index;
+    
+    while (graines > 0) {
+        i = (i + 1) % 14;
+        plateauSimu[i]++;
+        graines--;
+        derniereCase = i;
+    }
+    
+    let capture = 0;
+    let estAdverse = (joueur === 2 && derniereCase <= 6) || (joueur === 1 && derniereCase >= 7);
+    
+    if (estAdverse && (plateauSimu[derniereCase] === 2 || plateauSimu[derniereCase] === 3)) {
+        capture = plateauSimu[derniereCase];
+        plateauSimu[derniereCase] = 0;
+    }
+    
+    let joueurSuivant = (joueur === 1) ? 2 : 1;
+    let partieFinie = false;
+    
+    // Vérifier si la partie est finie
+    let j1Peut = false, j2Peut = false;
+    for (let j = 0; j <= 6; j++) if (plateauSimu[j] > 0) j1Peut = true;
+    for (let j = 7; j <= 13; j++) if (plateauSimu[j] > 0) j2Peut = true;
+    if (!j1Peut || !j2Peut) partieFinie = true;
+    
+    return { capture, joueurSuivant, partieFinie };
+}
+
+        function simulerCoup(plateauSimu, index, joueur) {
+            let graines = plateauSimu[index];
+            plateauSimu[index] = 0;
+            let i = index;
+            let derniereCase = index;
+            
+            while (graines > 0) {
+                i = (i + 1) % 14;
+                plateauSimu[i]++;
+                graines--;
+                derniereCase = i;
+            }
+            
+            let capture = 0;
+            let estAdverse = (joueur === 2 && derniereCase <= 6) || (joueur === 1 && derniereCase >= 7);
+            
+            if (estAdverse && (plateauSimu[derniereCase] === 2 || plateauSimu[derniereCase] === 3)) {
+                capture = plateauSimu[derniereCase];
+            }
+            
+            return { capture };
+        }
+
+        // ========== LOGIQUE DE JEU ==========
+        function jouerCoupHumain(index) {
+            if (partieFinie || joueurActuel !== 1) return;
+            jouerCoup(index, false);
+        }
+
+        function jouerCoup(index, estIA) {
+            let graines = plateau[index];
+            plateau[index] = 0;
+            let i = index;
+            let derniereCase = index;
+            
+            while (graines > 0) {
+                i = (i + 1) % 14;
+                plateau[i]++;
+                graines--;
+                derniereCase = i;
+            }
+            
+            let estAdverse = (joueurActuel === 1 && derniereCase >= 7) || (joueurActuel === 2 && derniereCase <= 6);
+            
+            if (estAdverse && (plateau[derniereCase] === 2 || plateau[derniereCase] === 3)) {
+                let capture = plateau[derniereCase];
+                let totalAdv = 0;
+                if (joueurActuel === 1) {
+                    for (let j = 7; j <= 13; j++) totalAdv += plateau[j];
+                } else {
+                    for (let j = 0; j <= 6; j++) totalAdv += plateau[j];
+                }
+                if (totalAdv - capture > 0) {
+                    plateau[derniereCase] = 0;
+                    if (joueurActuel === 1) scoreJ1 += capture;
+                    else scoreJ2 += capture;
+                    const msg = document.getElementById('infoMessage');
+                    if (msg) {
+                        msg.textContent = `🎉 Capture ! ${capture} graine(s) !`;
+                        setTimeout(() => msg.textContent = '', 1500);
+                    }
+                }
+            }
+            
+            verifierFinPartie();
+            
+            if (!partieFinie) {
+                if (joueurActuel === 1) {
+                    joueurActuel = 2;
+                    miseAJourAffichage();
+                    jouerCoupIA();
+                } else {
+                    joueurActuel = 1;
+                }
+            }
+            
+            afficherPlateau();
+            miseAJourAffichage();
+        }
+
+        function verifierFinPartie() {
+    let j1Peut = false, j2Peut = false;
+    for (let i = 0; i <= 6; i++) if (plateau[i] > 0) j1Peut = true;
+    for (let i = 7; i <= 13; i++) if (plateau[i] > 0) j2Peut = true;
+    
+    if (!j1Peut || !j2Peut) {
+        partieFinie = true;
+        if (!j1Peut) {
+            for (let i = 7; i <= 13; i++) { scoreJ2 += plateau[i]; plateau[i] = 0; }
+        }
+        if (!j2Peut) {
+            for (let i = 0; i <= 6; i++) { scoreJ1 += plateau[i]; plateau[i] = 0; }
+        }
+        
+        // Pop up de fin de partie
+        let titre = "";
+        let message = "";
+        let icone = "";
+        
+        if (scoreJ1 > scoreJ2) {
+            titre = "🎉 VICTOIRE ! 🎉";
+            message = `Tu as gagné ${scoreJ1} - ${scoreJ2} !`;
+            icone = "🏆";
+        } else if (scoreJ2 > scoreJ1) {
+            titre = "🤖 DÉFAITE... 🤖";
+            message = `L'IA gagne ${scoreJ2} - ${scoreJ1}. Réessaie !`;
+            icone = "😭";
+        } else {
+            titre = "🤝 MATCH NUL 🤝";
+            message = `${scoreJ1} - ${scoreJ2} ! Bien joué !`;
+            icone = "👏";
+        }
+        
+        // Afficher le popup personnalisé
+        afficherPopup(titre, message, icone);
+    }
+}
+
+// Fonction pour afficher un joli popup
+function afficherPopup(titre, message, icone) {
+    // Créer le popup
+    const popup = document.createElement('div');
+    popup.style.position = 'fixed';
+    popup.style.top = '50%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.backgroundColor = document.body.classList.contains('dark') ? '#1e1e2f' : '#fff';
+    popup.style.color = document.body.classList.contains('dark') ? '#fff' : '#333';
+    popup.style.padding = '30px 50px';
+    popup.style.borderRadius = '30px';
+    popup.style.boxShadow = '0 20px 50px rgba(0,0,0,0.3)';
+    popup.style.zIndex = '10000';
+    popup.style.textAlign = 'center';
+    popup.style.minWidth = '300px';
+    popup.style.border = '3px solid #ffd700';
+    popup.style.fontFamily = "'Poppins', Arial, sans-serif";
+    
+    popup.innerHTML = `
+        <div style="font-size: 60px; margin-bottom: 10px;">${icone}</div>
+        <h2 style="margin: 10px 0; color: #ff8c00;">${titre}</h2>
+        <p style="font-size: 18px; margin: 15px 0;">${message}</p>
+        <button id="popupOkBtn" style="background: linear-gradient(135deg, #ff8c00, #ffd700); border: none; padding: 10px 30px; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">
+            ✨ OK ✨
+        </button>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Fermer le popup au clic sur OK
+    document.getElementById('popupOkBtn').onclick = () => {
+        popup.remove();
+    };
+    
+    // Fermer aussi au clic en dehors (optionnel)
+    popup.onclick = (e) => {
+        if (e.target === popup) popup.remove();
+    };
+}
+
+        function miseAJourAffichage() {
+            document.getElementById('scoreJ1').textContent = scoreJ1;
+            document.getElementById('scoreJ2').textContent = scoreJ2;
+            const tourSpan = document.querySelector('#messageTour span');
+            if (tourSpan) {
+                if (partieFinie) tourSpan.textContent = "Partie terminée";
+                else if (joueurActuel === 1) tourSpan.textContent = "🎯 À TON TOUR ! Joue !";
+                else tourSpan.textContent = "🤖 L'IA réfléchit... 🤖";
+            }
+        }
+
+        // ========== DIFFICULTÉ ==========
+        document.getElementById('easyBtn').onclick = () => {
+            niveauDifficulte = "facile";
+            document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('easyBtn').classList.add('active');
+            initJeu();
+        };
+        document.getElementById('mediumBtn').onclick = () => {
+            niveauDifficulte = "moyen";
+            document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('mediumBtn').classList.add('active');
+            initJeu();
+        };
+        document.getElementById('hardBtn').onclick = () => {
+            niveauDifficulte = "difficile";
+            document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('hardBtn').classList.add('active');
+            initJeu();
+        };
+
+        // ========== BOUTONS ==========
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        document.getElementById('resetBtn').addEventListener('click', () => initJeu());
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = '/lobby.html';
+        });
+
+        // ========== LANCEMENT ==========
+        initTheme();
+        initJeu();
+    </script>
+</body>
+</html>

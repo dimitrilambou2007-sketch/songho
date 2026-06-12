@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Songho - Partie</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">   
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ÉCRAN DE CHARGEMENT -->
+    <div id="loaderScreen" class="loader-screen">
+        <div class="loader-content">
+            <i class="fas fa-chess-board loader-icon"></i>
+            <h2>SONGHO</h2>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <p id="loadingText" class="loading-text">Initialisation...</p>
+        </div>
+    </div>
+
+    <!-- PAGE PRINCIPALE -->
+    <div id="mainContent" class="main-content" style="display: none;">
+        <div class="app-container">
+            <div class="header">
+                <div class="logo">
+                    <i class="fas fa-chess-board"></i>
+                    <h1>SONGHO</h1>
+                    <span class="subtitle">Jeu de stratégie camerounais</span>
+                </div>
+                <button id="themeToggle" class="theme-btn">
+                    <i class="fas fa-moon"></i>
+                    <span>Thème sombre</span>
+                </button>
+            </div>
+
+            <div class="score-cards">
+                <div class="score-card player1-card">
+                    <div class="avatar"><i class="fas fa-user"></i></div>
+                    <h3>Joueur 1</h3>
+                    <div class="score-value" id="scoreJ1">0</div>
+                    <div class="badge">⬇️ Bas</div>
+                </div>
+                <div class="vs"><i class="fas fa-gripfire"></i></div>
+                <div class="score-card player2-card">
+                    <div class="avatar"><i class="fas fa-user-astronaut"></i></div>
+                    <h3>Joueur 2</h3>
+                    <div class="score-value" id="scoreJ2">0</div>
+                    <div class="badge">⬆️ Haut</div>
+                </div>
+            </div>
+
+            <div class="game-board">
+                <div id="plateau"></div>
+            </div>
+
+            <div class="game-controls">
+                <div class="turn-indicator" id="messageTour">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span>En attente...</span>
+                </div>
+                <button id="resetBtn" class="reset-btn">
+                    <i class="fas fa-sync-alt"></i>
+                    Nouvelle partie
+                </button>
+            </div>
+
+            <div id="infoMessage" class="info-message"></div>
+        </div>
+    </div>
+
+    <script>
+        // Récupérer les paramètres de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('gameId');
+        const monJoueur = parseInt(urlParams.get('player'));
+        
+        let currentState = null;
+        
+        // ========== BARRE DE CHARGEMENT ==========
+        let progress = 0;
+        const steps = [
+            { text: "Connexion au serveur...", width: 20 },
+            { text: "Chargement de la partie...", width: 40 },
+            { text: "Initialisation du plateau...", width: 70 },
+            { text: "Prêt à jouer !", width: 100 }
+        ];
+        
+        function updateProgress(stepIndex) {
+            if (stepIndex >= steps.length) {
+                setTimeout(() => {
+                    const loader = document.getElementById('loaderScreen');
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => {
+                            loader.style.display = 'none';
+                            const main = document.getElementById('mainContent');
+                            if (main) main.style.display = 'block';
+                        }, 500);
+                    }
+                }, 500);
+                return;
+            }
+            
+            const step = steps[stepIndex];
+            const progressFill = document.getElementById('progressFill');
+            const loadingText = document.getElementById('loadingText');
+            
+            if (progressFill) progressFill.style.width = step.width + '%';
+            if (loadingText) loadingText.textContent = step.text;
+            
+            setTimeout(() => updateProgress(stepIndex + 1), 800);
+        }
+        
+        updateProgress(0);
+        
+        // ========== THÈME ==========
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.classList.add(savedTheme);
+            updateThemeButton(savedTheme);
+        }
+        
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark');
+            const newTheme = isDark ? 'light' : 'dark';
+            document.body.classList.remove('light', 'dark');
+            document.body.classList.add(newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+        }
+        
+        function updateThemeButton(theme) {
+            const btn = document.getElementById('themeToggle');
+            if (btn) {
+                const isDark = theme === 'dark';
+                btn.innerHTML = isDark ? '<i class="fas fa-sun"></i><span>Thème clair</span>' : '<i class="fas fa-moon"></i><span>Thème sombre</span>';
+            }
+        }
+        
+        // ========== COMMUNICATION AVEC LE SERVEUR ==========
+        async function fetchState() {
+            try {
+                const res = await fetch(`/api/state?gameId=${gameId}`);
+                const state = await res.json();
+                currentState = state;
+                updateUI();
+            } catch(e) {
+                console.error("Erreur de connexion");
+            }
+        }
+        
+        async function sendMove(caseIndex) {
+            const msg = document.getElementById('infoMessage');
+            if (msg) msg.textContent = '';
+            
+            try {
+                const res = await fetch('/api/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameId, caseIndex, player: monJoueur })
+                });
+                
+                if (!res.ok) {
+                    const error = await res.json();
+                    if (msg) msg.textContent = '❌ ' + error.error;
+                    setTimeout(() => { if (msg) msg.textContent = ''; }, 2000);
+                    return;
+                }
+                
+                const newState = await res.json();
+                currentState = newState;
+                updateUI();
+            } catch(e) {
+                if (msg) msg.textContent = '❌ Erreur réseau';
+            }
+        }
+        
+        async function resetGame() {
+            await fetch('/api/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId })
+            });
+            fetchState();
+        }
+        
+        // ========== AFFICHAGE ==========
+        function updateUI() {
+            if (!currentState) return;
+            
+            document.getElementById('scoreJ1').textContent = currentState.scores[1];
+            document.getElementById('scoreJ2').textContent = currentState.scores[2];
+            
+            const turnSpan = document.querySelector('#messageTour span');
+            if (currentState.gameOver) {
+                if (currentState.winner === 1) turnSpan.textContent = "🏆 Joueur 1 a gagné !";
+                else if (currentState.winner === 2) turnSpan.textContent = "🏆 Joueur 2 a gagné !";
+                else turnSpan.textContent = "🤝 Match nul !";
+            } else {
+                if (currentState.currentPlayer === monJoueur) {
+                    turnSpan.textContent = "🎯 À TON TOUR ! Joue !";
+                    document.getElementById('messageTour').style.background = "#4caf50";
+                } else {
+                    turnSpan.textContent = `⏳ Tour du Joueur ${currentState.currentPlayer}`;
+                    document.getElementById('messageTour').style.background = "#ffd700";
+                }
+            }
+            
+            const container = document.getElementById('plateau');
+            container.innerHTML = '';
+            
+            // Rangée haut (Joueur 2)
+            const rangeeHaut = document.createElement('div');
+            rangeeHaut.className = 'rangee';
+            for (let i = 13; i >= 7; i--) {
+                rangeeHaut.appendChild(creerCase(i, monJoueur === 2));
+            }
+            container.appendChild(rangeeHaut);
+            
+            // Rangée bas (Joueur 1)
+            const rangeeBas = document.createElement('div');
+            rangeeBas.className = 'rangee';
+            for (let i = 0; i <= 6; i++) {
+                rangeeBas.appendChild(creerCase(i, monJoueur === 1));
+            }
+            container.appendChild(rangeeBas);
+        }
+        
+        function creerCase(index, estMaRangee) {
+            const caseDiv = document.createElement('div');
+            caseDiv.className = 'case';
+            if (currentState.board[index] === 0) caseDiv.classList.add('vide');
+            caseDiv.textContent = currentState.board[index];
+            
+            const peutJouer = !currentState.gameOver && 
+                              currentState.currentPlayer === monJoueur && 
+                              estMaRangee && 
+                              currentState.board[index] > 0;
+            
+            if (peutJouer) {
+                caseDiv.style.cursor = 'pointer';
+                caseDiv.onclick = () => sendMove(index);
+            }
+            return caseDiv;
+        }
+        
+        // ========== BOUTONS ==========
+        document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
+        document.getElementById('resetBtn')?.addEventListener('click', resetGame);
+        
+        // ========== LANCEMENT ==========
+        initTheme();
+        setInterval(fetchState, 1000);
+        fetchState();
+    </script>
+</body>
+</html>
+

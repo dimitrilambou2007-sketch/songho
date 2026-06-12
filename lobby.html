@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Songho - Lobby</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .lobby-container {
+            max-width: 600px;
+            margin: 100px auto;
+            text-align: center;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 40px;
+        }
+        .lobby-container h1 {
+            color: #ffd700;
+            margin-bottom: 30px;
+        }
+        .lobby-container input {
+            padding: 15px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            width: 250px;
+            margin: 10px;
+        }
+        .lobby-container button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px;
+        }
+        .code-display {
+            background: #2a2a3e;
+            padding: 20px;
+            border-radius: 20px;
+            margin: 20px auto;
+            color: #ffd700;
+            font-size: 36px;
+            letter-spacing: 5px;
+            display: inline-block;
+        }
+        .or {
+            color: white;
+            margin: 20px;
+            font-size: 18px;
+        }
+        .loader-small {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: #ffd700;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #iaBtn {
+            background: #4caf50 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="lobby-container">
+        <h1><i class="fas fa-chess-board"></i> SONGHO</h1>
+        
+        <button id="createBtn"><i class="fas fa-plus"></i> Créer une partie</button>
+        
+        <div class="or">— ou —</div>
+        
+        <input type="text" id="joinCode" placeholder="Code de partie">
+        <button id="joinBtn"><i class="fas fa-sign-in-alt"></i> Rejoindre</button>
+        
+        <div class="or">— ou —</div>
+        
+        <button id="iaBtn"><i class="fas fa-robot"></i> Jouer contre l'IA</button>
+        
+        <div id="status" style="color: white; margin-top: 20px;"></div>
+        <div id="codeDisplay" class="code-display" style="display: none;"></div>
+    </div>
+
+    <script>
+        let gameId = null;
+        const statusDiv = document.getElementById('status');
+        const codeDisplay = document.getElementById('codeDisplay');
+        
+        // Créer une partie
+        document.getElementById('createBtn').onclick = async () => {
+            statusDiv.innerHTML = '<span class="loader-small"></span> Création de la partie...';
+            
+            const res = await fetch('/api/create-game', { method: 'POST' });
+            const data = await res.json();
+            gameId = data.gameId;
+            
+            codeDisplay.style.display = 'inline-block';
+            codeDisplay.textContent = gameId;
+            statusDiv.innerHTML = '✅ Partie créée ! Partage ce code avec ton adversaire.<br>⏳ En attente du joueur 2...';
+            
+            waitForPlayer();
+        };
+        
+        // Rejoindre une partie
+        document.getElementById('joinBtn').onclick = async () => {
+            const code = document.getElementById('joinCode').value;
+            if (!code) {
+                statusDiv.innerHTML = '❌ Entre un code de partie !';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<span class="loader-small"></span> Connexion...';
+            
+            const res = await fetch('/api/join-game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId: code })
+            });
+            
+            if (res.ok) {
+                window.location.href = `/game.html?gameId=${code}&player=2`;
+            } else {
+                statusDiv.innerHTML = '❌ Code invalide ou partie pleine !';
+            }
+        };
+        
+        // Mode IA
+        document.getElementById('iaBtn').onclick = () => {
+            window.location.href = '/ia-game.html';
+        };
+        
+        // Attendre le joueur 2
+        async function waitForPlayer() {
+            const interval = setInterval(async () => {
+                const res = await fetch(`/api/game-status?gameId=${gameId}`);
+                const data = await res.json();
+                if (data.playerCount === 2) {
+                    clearInterval(interval);
+                    window.location.href = `/game.html?gameId=${gameId}&player=1`;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

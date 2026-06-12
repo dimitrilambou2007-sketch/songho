@@ -1,10 +1,14 @@
+const serverless = require('serverless-http');
 const express = require('express');
+
 const app = express();
 app.use(express.json());
 app.use(express.static('.'));
 
+// Stockage des parties
 const games = new Map();
 
+// Créer une partie
 app.post('/api/create-game', (req, res) => {
     const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
     games.set(gameId, {
@@ -21,6 +25,7 @@ app.post('/api/create-game', (req, res) => {
     res.json({ gameId });
 });
 
+// Rejoindre une partie
 app.post('/api/join-game', (req, res) => {
     const { gameId } = req.body;
     const game = games.get(gameId);
@@ -30,12 +35,14 @@ app.post('/api/join-game', (req, res) => {
     res.json({ success: true });
 });
 
+// Statut d'une partie
 app.get('/api/game-status', (req, res) => {
     const gameId = req.query.gameId;
     const game = games.get(gameId);
     res.json({ playerCount: game ? game.players.length : 0 });
 });
 
+// Récupérer l'état
 app.get('/api/state', (req, res) => {
     const gameId = req.query.gameId;
     const game = games.get(gameId);
@@ -43,6 +50,7 @@ app.get('/api/state', (req, res) => {
     res.json(game.gameState);
 });
 
+// Réinitialiser
 app.post('/api/reset', (req, res) => {
     const { gameId } = req.body;
     const game = games.get(gameId);
@@ -58,6 +66,7 @@ app.post('/api/reset', (req, res) => {
     res.json({ success: true });
 });
 
+// Jouer un coup
 app.post('/api/move', (req, res) => {
     const { gameId, caseIndex, player } = req.body;
     const game = games.get(gameId);
@@ -140,10 +149,11 @@ app.post('/api/move', (req, res) => {
     res.json(state);
 });
 
+// Redirection vers lobby
 app.get('/', (req, res) => {
     res.redirect('/lobby.html');
 });
 
-app.listen(3000, () => {
-    console.log('Serveur demarre sur http://localhost:3000');
-});
+// Export pour Netlify
+const handler = serverless(app);
+module.exports.handler = handler;

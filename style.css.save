@@ -305,6 +305,8 @@ body.dark .app-container {
     .score-value { font-size: 2rem; }
 }
 
+
+
 /* Animation pour le popup */
 @keyframes popupAppear {
     from {

@@ -1,7 +1,43 @@
+// ========== BARRE DE CHARGEMENT ==========
+let progress = 0;
+const steps = [
+    { text: "Chargement des assets...", width: 20 },
+    { text: "Connexion au serveur...", width: 40 },
+    { text: "Initialisation du plateau...", width: 70 },
+    { text: "Prêt à jouer !", width: 100 }
+];
+
+function updateProgress(stepIndex) {
+    if (stepIndex >= steps.length) {
+        setTimeout(() => {
+            const loader = document.getElementById('loaderScreen');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                    const main = document.getElementById('mainContent');
+                    if (main) main.style.display = 'block';
+                }, 500);
+            }
+        }, 500);
+        return;
+    }
+    
+    const step = steps[stepIndex];
+    const progressFill = document.getElementById('progressFill');
+    const loadingText = document.getElementById('loadingText');
+    
+    if (progressFill) progressFill.style.width = step.width + '%';
+    if (loadingText) loadingText.textContent = step.text;
+    
+    setTimeout(() => updateProgress(stepIndex + 1), 800);
+}
+
+updateProgress(0);
+
 // ========== ÉTAT DU JEU ==========
 let plateau = [];
-let scoreJ1 = 0;
-let scoreJ2 = 0;
+let scoreJ1 = 0, scoreJ2 = 0;
 let joueurActuel = 1;
 let partieFinie = false;
 
@@ -36,48 +72,26 @@ function initJeu() {
     scoreJ2 = 0;
     joueurActuel = 1;
     partieFinie = false;
-    
     afficherPlateau();
-    mettreAJourAffichage();
-    afficherMessage("");
+    miseAJourAffichage();
 }
 
-function afficherMessage(msg, isError = false) {
-    const msgDiv = document.getElementById('infoMessage');
-    if (msgDiv) {
-        msgDiv.textContent = msg;
-        msgDiv.style.color = isError ? '#ff6b6b' : '#4caf50';
-        if (msg) {
-            setTimeout(() => {
-                if (msgDiv.textContent === msg) msgDiv.textContent = '';
-            }, 2000);
-        }
-    }
-}
-
-// ========== AFFICHAGE ==========
 function afficherPlateau() {
     const container = document.getElementById('plateau');
     if (!container) return;
     container.innerHTML = '';
     
-    // Rangée du haut (Joueur 2) - cases 7 à 13
     const rangeeHaut = document.createElement('div');
-    rangeeHaut.className = 'rangee rangee-du-haut';
-    
+    rangeeHaut.className = 'rangee';
     for (let i = 13; i >= 7; i--) {
-        const caseDiv = creerCase(i);
-        rangeeHaut.appendChild(caseDiv);
+        rangeeHaut.appendChild(creerCase(i));
     }
     container.appendChild(rangeeHaut);
     
-    // Rangée du bas (Joueur 1) - cases 0 à 6
     const rangeeBas = document.createElement('div');
-    rangeeBas.className = 'rangee rangee-du-bas';
-    
+    rangeeBas.className = 'rangee';
     for (let i = 0; i <= 6; i++) {
-        const caseDiv = creerCase(i);
-        rangeeBas.appendChild(caseDiv);
+        rangeeBas.appendChild(creerCase(i));
     }
     container.appendChild(rangeeBas);
 }
@@ -85,86 +99,26 @@ function afficherPlateau() {
 function creerCase(index) {
     const caseDiv = document.createElement('div');
     caseDiv.className = 'case';
+    if (plateau[index] === 0) caseDiv.classList.add('vide');
     caseDiv.textContent = plateau[index];
     
-    if (plateau[index] === 0) {
-        caseDiv.classList.add('vide');
-    }
-    
-    // Vérifier si on peut jouer sur cette case
     const peutJouer = !partieFinie && 
-                      ((joueurActuel === 1 && index < 7) || (joueurActuel === 2 && index >= 7)) &&
-                      plateau[index] > 0;
+        ((joueurActuel === 1 && index < 7) || (joueurActuel === 2 && index >= 7)) &&
+        plateau[index] > 0;
     
     if (peutJouer) {
-        caseDiv.style.cursor = "pointer";
-        caseDiv.onclick = () => gererClic(index);
-    } else {
-        caseDiv.style.cursor = "not-allowed";
-        caseDiv.style.opacity = "0.7";
+        caseDiv.style.cursor = 'pointer';
+        caseDiv.onclick = () => jouerCoup(index);
     }
-    
     return caseDiv;
 }
 
-function mettreAJourAffichage() {
-    document.getElementById('scoreJ1').textContent = scoreJ1;
-    document.getElementById('scoreJ2').textContent = scoreJ2;
+function jouerCoup(index) {
+    let graines = plateau[index];
+    plateau[index] = 0;
+    let i = index;
+    let derniereCase = index;
     
-    const messageEl = document.getElementById('messageTour');
-    if (messageEl) {
-        if (partieFinie) {
-            let winnerMsg = "";
-            if (scoreJ1 > scoreJ2) winnerMsg = "🏆 Joueur 1 a gagné ! 🏆";
-            else if (scoreJ2 > scoreJ1) winnerMsg = "🏆 Joueur 2 a gagné ! 🏆";
-            else winnerMsg = "🤝 Match nul !";
-            messageEl.innerHTML = `<i class="fas fa-trophy"></i><span>${winnerMsg}</span>`;
-        } else {
-            messageEl.innerHTML = `<i class="fas fa-hourglass-half"></i><span>🎯 Tour du Joueur ${joueurActuel}</span>`;
-        }
-    }
-}
-
-// Animation de capture
-function animerCapture(caseElement) {
-    caseElement.classList.add('capture-animation');
-    setTimeout(() => {
-        caseElement.classList.remove('capture-animation');
-    }, 500);
-}
-
-// ========== LOGIQUE DU JEU ==========
-function gererClic(index) {
-    if (partieFinie) {
-        afficherMessage("Partie terminée ! Clique sur 'Nouvelle partie'", true);
-        return;
-    }
-    
-    if (joueurActuel === 1 && index >= 7) {
-        afficherMessage("Joueur 1, choisis une case dans ta rangée (cases du bas) !", true);
-        return;
-    }
-    if (joueurActuel === 2 && index < 7) {
-        afficherMessage("Joueur 2, choisis une case dans ta rangée (cases du haut) !", true);
-        return;
-    }
-    
-    if (plateau[index] === 0) {
-        afficherMessage("Cette case est vide, choisis-en une autre !", true);
-        return;
-    }
-    
-    jouerCoup(index);
-}
-
-function jouerCoup(indexDepart) {
-    let graines = plateau[indexDepart];
-    plateau[indexDepart] = 0;
-    
-    let i = indexDepart;
-    let derniereCase = indexDepart;
-    
-    // Distribution
     while (graines > 0) {
         i = (i + 1) % 14;
         plateau[i]++;
@@ -172,89 +126,80 @@ function jouerCoup(indexDepart) {
         derniereCase = i;
     }
     
-    // Vérification capture
-    let estCaseAdverse = false;
-    if (joueurActuel === 1 && derniereCase >= 7) estCaseAdverse = true;
-    if (joueurActuel === 2 && derniereCase <= 6) estCaseAdverse = true;
+    let estAdverse = (joueurActuel === 1 && derniereCase >= 7) ||
+                     (joueurActuel === 2 && derniereCase <= 6);
     
-    if (estCaseAdverse && (plateau[derniereCase] === 2 || plateau[derniereCase] === 3)) {
-        let grainesCapturees = plateau[derniereCase];
-        
-        let totalGrainesAdverses = 0;
+    if (estAdverse && (plateau[derniereCase] === 2 || plateau[derniereCase] === 3)) {
+        let capture = plateau[derniereCase];
+        let totalAdv = 0;
         if (joueurActuel === 1) {
-            for (let j = 7; j <= 13; j++) totalGrainesAdverses += plateau[j];
+            for (let j = 7; j <= 13; j++) totalAdv += plateau[j];
         } else {
-            for (let j = 0; j <= 6; j++) totalGrainesAdverses += plateau[j];
+            for (let j = 0; j <= 6; j++) totalAdv += plateau[j];
         }
-        
-        if (totalGrainesAdverses - grainesCapturees > 0) {
+        if (totalAdv - capture > 0) {
             plateau[derniereCase] = 0;
-            if (joueurActuel === 1) scoreJ1 += grainesCapturees;
-            else scoreJ2 += grainesCapturees;
-            
-            afficherMessage(`🎉 Capture ! ${grainesCapturees} graine(s) capturée(s) !`);
-            
-            // Animation sur la case capturée
-            const cases = document.querySelectorAll('.case');
-            if (cases[derniereCase]) animerCapture(cases[derniereCase]);
+            if (joueurActuel === 1) scoreJ1 += capture;
+            else scoreJ2 += capture;
+            const msg = document.getElementById('infoMessage');
+            if (msg) {
+                msg.textContent = `🎉 Capture ! ${capture} graine(s) !`;
+                setTimeout(() => msg.textContent = '', 2000);
+            }
         }
     }
     
     verifierFinPartie();
     
     if (!partieFinie) {
-        joueurActuel = (joueurActuel === 1) ? 2 : 1;
-        afficherMessage(`C'est au tour du Joueur ${joueurActuel}`);
+        joueurActuel = joueurActuel === 1 ? 2 : 1;
     }
     
     afficherPlateau();
-    mettreAJourAffichage();
+    miseAJourAffichage();
 }
 
 function verifierFinPartie() {
-    let joueur1PeutJouer = false;
-    for (let i = 0; i <= 6; i++) if (plateau[i] > 0) joueur1PeutJouer = true;
+    let j1Peut = false, j2Peut = false;
+    for (let i = 0; i <= 6; i++) if (plateau[i] > 0) j1Peut = true;
+    for (let i = 7; i <= 13; i++) if (plateau[i] > 0) j2Peut = true;
     
-    let joueur2PeutJouer = false;
-    for (let i = 7; i <= 13; i++) if (plateau[i] > 0) joueur2PeutJouer = true;
-    
-    if (!joueur1PeutJouer || !joueur2PeutJouer) {
+    if (!j1Peut || !j2Peut) {
         partieFinie = true;
-        
-        if (!joueur1PeutJouer) {
-            for (let i = 7; i <= 13; i++) {
-                scoreJ2 += plateau[i];
-                plateau[i] = 0;
-            }
-            afficherMessage("Joueur 1 ne peut plus jouer ! Transfert des graines au Joueur 2");
+        if (!j1Peut) {
+            for (let i = 7; i <= 13; i++) { scoreJ2 += plateau[i]; plateau[i] = 0; }
         }
-        if (!joueur2PeutJouer) {
-            for (let i = 0; i <= 6; i++) {
-                scoreJ1 += plateau[i];
-                plateau[i] = 0;
-            }
-            afficherMessage("Joueur 2 ne peut plus jouer ! Transfert des graines au Joueur 1");
+        if (!j2Peut) {
+            for (let i = 0; i <= 6; i++) { scoreJ1 += plateau[i]; plateau[i] = 0; }
         }
-        
-        afficherPlateau();
-        mettreAJourAffichage();
-        
-        let finalMsg = "";
-        if (scoreJ1 > scoreJ2) finalMsg = `🏆 VICTOIRE ! Joueur 1 gagne ${scoreJ1} - ${scoreJ2} ! 🏆`;
-        else if (scoreJ2 > scoreJ1) finalMsg = `🏆 VICTOIRE ! Joueur 2 gagne ${scoreJ2} - ${scoreJ1} ! 🏆`;
-        else finalMsg = `🤝 MATCH NUL : ${scoreJ1} partout ! 🤝`;
-        
-        afficherMessage(finalMsg);
-        setTimeout(() => alert(finalMsg), 100);
+        let msg = scoreJ1 > scoreJ2 ? `🏆 Joueur 1 gagne ${scoreJ1}-${scoreJ2} !` :
+                   scoreJ2 > scoreJ1 ? `🏆 Joueur 2 gagne ${scoreJ2}-${scoreJ1} !` :
+                   `🤝 Match nul ${scoreJ1}-${scoreJ2} !`;
+        setTimeout(() => alert(msg), 100);
+    }
+}
+
+function miseAJourAffichage() {
+    document.getElementById('scoreJ1').textContent = scoreJ1;
+    document.getElementById('scoreJ2').textContent = scoreJ2;
+    const messageSpan = document.querySelector('#messageTour span');
+    if (messageSpan) {
+        messageSpan.textContent = partieFinie ? "Partie terminée" : `🎯 Tour du Joueur ${joueurActuel}`;
     }
 }
 
 // ========== BOUTONS ==========
-document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
-document.getElementById('resetBtn')?.addEventListener('click', () => {
-    initJeu();
-    afficherMessage("🔄 Nouvelle partie !");
-});
+const themeBtn = document.getElementById('themeToggle');
+if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
+const resetBtn = document.getElementById('resetBtn');
+if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+        initJeu();
+        const msg = document.getElementById('infoMessage');
+        if (msg) msg.textContent = "🔄 Nouvelle partie !";
+    });
+}
 
 // ========== LANCEMENT ==========
 initTheme();
